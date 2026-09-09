@@ -22,8 +22,12 @@ resource "aws_subnet" "public_subnet" {
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "us-east-1${var.public_az}"
   map_public_ip_on_launch = true
+  # The AWS cloud controller discovers subnets for `type: LoadBalancer` Services
+  # by these tags. Without them ELB creation fails and the Service stays pending.
   tags = {
-    Name = "udacity-public"
+    Name                            = "udacity-public"
+    "kubernetes.io/role/elb"        = "1"
+    "kubernetes.io/cluster/cluster" = "shared"
   }
 }
 
@@ -53,7 +57,9 @@ resource "aws_subnet" "private_subnet" {
   availability_zone = "us-east-1${var.private_az}"
   cidr_block        = "10.0.2.0/24"
   tags = {
-    Name = "udacity-private"
+    Name                              = "udacity-private"
+    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/cluster/cluster"   = "shared"
   }
 }
 
