@@ -17,12 +17,18 @@ screenshots below are the durable evidence.
 
 ## Workflows
 
-| Workflow | File | Run | Result |
-| --- | --- | --- | --- |
-| Frontend Continuous Integration | [frontend-ci.yaml](.github/workflows/frontend-ci.yaml) | [34315118113](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34315118113) | success |
-| Backend Continuous Integration | [backend-ci.yaml](.github/workflows/backend-ci.yaml) | [34316445864](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34316445864) | success |
-| Frontend Continuous Deployment | [frontend-cd.yaml](.github/workflows/frontend-cd.yaml) | [34322843297](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322843297) | success |
-| Backend Continuous Deployment | [backend-cd.yaml](.github/workflows/backend-cd.yaml) | [34322565192](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322565192) | success |
+| Workflow | File | Trigger | Run | Result |
+| --- | --- | --- | --- | --- |
+| Frontend Continuous Integration | [frontend-ci.yaml](.github/workflows/frontend-ci.yaml) | `pull_request` | [34315118113](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34315118113) | success |
+| Backend Continuous Integration | [backend-ci.yaml](.github/workflows/backend-ci.yaml) | `pull_request` | [34316445864](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34316445864) | success |
+| Frontend Continuous Deployment | [frontend-cd.yaml](.github/workflows/frontend-cd.yaml) | `push` to `main` | [34324525337](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34324525337) | success |
+| Backend Continuous Deployment | [backend-cd.yaml](.github/workflows/backend-cd.yaml) | `push` to `main` | [34324525255](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34324525255) | success |
+| Frontend Continuous Deployment | [frontend-cd.yaml](.github/workflows/frontend-cd.yaml) | `workflow_dispatch` | [34322843297](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322843297) | success |
+| Backend Continuous Deployment | [backend-cd.yaml](.github/workflows/backend-cd.yaml) | `workflow_dispatch` | [34322565192](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322565192) | success |
+
+Every workflow also declares `workflow_dispatch`, so all four can be run
+on demand. Both deployment workflows are shown running automatically on a
+push to `main` and manually.
 
 AWS credentials are read exclusively from GitHub Secrets
 (`secrets.AWS_ACCESS_KEY_ID`, `secrets.AWS_SECRET_ACCESS_KEY`) via
@@ -75,6 +81,11 @@ Selecting a movie fetches its details from the backend API, confirming the
 Demonstrated on the `feature/failure-demo` branch. Lint passes, Test fails, and
 the Build job is skipped rather than run — the `needs` gate holding as intended.
 
+| Workflow | Run | Result |
+| --- | --- | --- |
+| Frontend Continuous Integration | [34317082084](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34317082084) | failure |
+| Backend Continuous Integration | [34317082066](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34317082066) | failure |
+
 ### Frontend Continuous Integration — failing
 
 ![Frontend CI failure](screenshots/10-frontend-ci-failure.png)
@@ -85,15 +96,25 @@ the Build job is skipped rather than run — the `needs` gate holding as intende
 
 ## Images published to Amazon ECR
 
-Both images are tagged with the git SHA of the deployed commit,
-`8d46e4925486dfcbbbc38c6c711306d3303f8e4e`:
+Every image is tagged with the git SHA of the commit it was built from.
+Both repositories hold one image per deployment:
 
 ```
-$ aws ecr describe-images --repository-name backend  --query "imageDetails[].imageTags" --output text
-8d46e4925486dfcbbbc38c6c711306d3303f8e4e
+$ aws ecr describe-images --repository-name backend  --query "imageDetails[].imageTags[]" --output text
+8d46e4925486dfcbbbc38c6c711306d3303f8e4e   c58146a8fb4cd38666d68e427e0caa35d3c8c9fb
 
-$ aws ecr describe-images --repository-name frontend --query "imageDetails[].imageTags" --output text
-8d46e4925486dfcbbbc38c6c711306d3303f8e4e
+$ aws ecr describe-images --repository-name frontend --query "imageDetails[].imageTags[]" --output text
+c58146a8fb4cd38666d68e427e0caa35d3c8c9fb   8d46e4925486dfcbbbc38c6c711306d3303f8e4e
+```
+
+The cluster runs the most recent of these, `c58146a`:
+
+```
+$ kubectl get deploy backend  -o jsonpath="{.spec.template.spec.containers[0].image}"
+933608385061.dkr.ecr.us-east-1.amazonaws.com/backend:c58146a8fb4cd38666d68e427e0caa35d3c8c9fb
+
+$ kubectl get deploy frontend -o jsonpath="{.spec.template.spec.containers[0].image}"
+933608385061.dkr.ecr.us-east-1.amazonaws.com/frontend:c58146a8fb4cd38666d68e427e0caa35d3c8c9fb
 ```
 
 ## Workloads on the EKS cluster
@@ -101,15 +122,15 @@ $ aws ecr describe-images --repository-name frontend --query "imageDetails[].ima
 ```
 $ kubectl get deploy,svc,pods
 NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/backend    1/1     1            1           12m
-deployment.apps/frontend   1/1     1            1           9m19s
+deployment.apps/backend    1/1     1            1           24m
+deployment.apps/frontend   1/1     1            1           21m
 
 NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE
-service/backend      LoadBalancer   172.20.60.26     ae61392a1591b4516b52fa741aa2a38a-1915296944.us-east-1.elb.amazonaws.com   80:31472/TCP   12m
-service/frontend     LoadBalancer   172.20.229.254   ae3b99e75d36c4ae0b16853ee0232b17-1737984447.us-east-1.elb.amazonaws.com   80:31618/TCP   9m19s
-service/kubernetes   ClusterIP      172.20.0.1       <none>                                                                    443/TCP        55m
+service/backend      LoadBalancer   172.20.60.26     ae61392a1591b4516b52fa741aa2a38a-1915296944.us-east-1.elb.amazonaws.com   80:31472/TCP   24m
+service/frontend     LoadBalancer   172.20.229.254   ae3b99e75d36c4ae0b16853ee0232b17-1737984447.us-east-1.elb.amazonaws.com   80:31618/TCP   21m
+service/kubernetes   ClusterIP      172.20.0.1       <none>                                                                    443/TCP        67m
 
-NAME                            READY   STATUS    RESTARTS   AGE
-pod/backend-5dd9d98574-bhv7t    1/1     Running   0          12m
-pod/frontend-555d9b9d98-b2t27   1/1     Running   0          9m19s
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/backend-54f846d5fc-w7w78   1/1     Running   0          71s
+pod/frontend-b5dd46c7c-76mjx   1/1     Running   0          75s
 ```
