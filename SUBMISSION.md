@@ -2,6 +2,9 @@
 
 Repository: https://github.com/shahlanhassanm/movie-picture-pipeline
 
+Four GitHub Actions workflows build, test and deploy a React frontend and a
+Flask backend to an Amazon EKS cluster, with images published to Amazon ECR.
+
 ## Live application URLs
 
 | Application | URL |
@@ -9,74 +12,104 @@ Repository: https://github.com/shahlanhassanm/movie-picture-pipeline
 | Frontend | http://ae3b99e75d36c4ae0b16853ee0232b17-1737984447.us-east-1.elb.amazonaws.com |
 | Backend API | http://ae61392a1591b4516b52fa741aa2a38a-1915296944.us-east-1.elb.amazonaws.com/movies |
 
-> These point at AWS resources that are torn down after review, so the
-> screenshots below are the durable evidence.
+These point at AWS resources that are torn down after review, so the
+screenshots below are the durable evidence.
 
-Backend response:
+## Workflows
+
+| Workflow | File | Run | Result |
+| --- | --- | --- | --- |
+| Frontend Continuous Integration | [frontend-ci.yaml](.github/workflows/frontend-ci.yaml) | [34315118113](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34315118113) | success |
+| Backend Continuous Integration | [backend-ci.yaml](.github/workflows/backend-ci.yaml) | [34316445864](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34316445864) | success |
+| Frontend Continuous Deployment | [frontend-cd.yaml](.github/workflows/frontend-cd.yaml) | [34322843297](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322843297) | success |
+| Backend Continuous Deployment | [backend-cd.yaml](.github/workflows/backend-cd.yaml) | [34322565192](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322565192) | success |
+
+AWS credentials are read exclusively from GitHub Secrets
+(`secrets.AWS_ACCESS_KEY_ID`, `secrets.AWS_SECRET_ACCESS_KEY`) via
+`aws-actions/configure-aws-credentials`; ECR authentication uses
+`aws-actions/amazon-ecr-login`. No credentials appear in any workflow file.
+
+## Application running on the cluster
+
+### Frontend displaying the movie list
+
+![Frontend movie list](screenshots/01-frontend-movie-list.png)
+
+Selecting a movie fetches its details from the backend API, confirming the
+`REACT_APP_MOVIE_API_URL` build argument was baked in correctly:
+
+![Top Gun: Maverick](screenshots/02-frontend-detail-top-gun.png)
+
+![Sonic the Hedgehog](screenshots/03-frontend-detail-sonic.png)
+
+![A Quiet Place](screenshots/04-frontend-detail-quiet-place.png)
+
+### Backend API returning the movie list
+
+![Backend movies JSON](screenshots/05-backend-movies-json.png)
 
 ```json
 {"movies":[{"id":"123","title":"Top Gun: Maverick"},{"id":"456","title":"Sonic the Hedgehog"},{"id":"789","title":"A Quiet Place"}]}
 ```
 
-## Workflows
+## Pipelines passing
 
-| Workflow | File | Run |
-| --- | --- | --- |
-| Frontend Continuous Integration | [.github/workflows/frontend-ci.yaml](.github/workflows/frontend-ci.yaml) | [34315118113](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34315118113) |
-| Backend Continuous Integration | [.github/workflows/backend-ci.yaml](.github/workflows/backend-ci.yaml) | [34316445864](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34316445864) |
-| Frontend Continuous Deployment | [.github/workflows/frontend-cd.yaml](.github/workflows/frontend-cd.yaml) | [34322843297](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322843297) |
-| Backend Continuous Deployment | [.github/workflows/backend-cd.yaml](.github/workflows/backend-cd.yaml) | [34322565192](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34322565192) |
+### Frontend Continuous Integration
 
-Both applications were deployed from images tagged with the git SHA
-`8d46e4925486dfcbbbc38c6c711306d3303f8e4e`.
+![Frontend CI success](screenshots/06-frontend-ci-success.png)
+
+### Backend Continuous Integration
+
+![Backend CI success](screenshots/07-backend-ci-success.png)
+
+### Frontend Continuous Deployment
+
+![Frontend CD success](screenshots/08-frontend-cd-success.png)
+
+### Backend Continuous Deployment
+
+![Backend CD success](screenshots/09-backend-cd-success.png)
 
 ## Pipelines fail when tests fail
 
-Demonstrated on the `feature/failure-demo` branch:
+Demonstrated on the `feature/failure-demo` branch. Lint passes, Test fails, and
+the Build job is skipped rather than run — the `needs` gate holding as intended.
 
-| Workflow | Run | Result |
-| --- | --- | --- |
-| Frontend Continuous Integration | [34317082084](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34317082084) | failure |
-| Backend Continuous Integration | [34317082066](https://github.com/shahlanhassanm/movie-picture-pipeline/actions/runs/34317082066) | failure |
+### Frontend Continuous Integration — failing
 
-## Screenshots
+![Frontend CI failure](screenshots/10-frontend-ci-failure.png)
 
-### 1. Frontend displaying the movie list
+### Backend Continuous Integration — failing
 
-![Frontend movie list](screenshots/01-frontend-movies.png)
+![Backend CI failure](screenshots/11-backend-ci-failure.png)
 
-### 2. Backend API returning the movie list
+## Images published to Amazon ECR
 
-![Backend movies JSON](screenshots/02-backend-movies-json.png)
+Both images are tagged with the git SHA of the deployed commit,
+`8d46e4925486dfcbbbc38c6c711306d3303f8e4e`:
 
-### 3. Frontend Continuous Integration — passing
+```
+$ aws ecr describe-images --repository-name backend  --query "imageDetails[].imageTags" --output text
+8d46e4925486dfcbbbc38c6c711306d3303f8e4e
 
-![Frontend CI success](screenshots/03-frontend-ci-success.png)
+$ aws ecr describe-images --repository-name frontend --query "imageDetails[].imageTags" --output text
+8d46e4925486dfcbbbc38c6c711306d3303f8e4e
+```
 
-### 4. Backend Continuous Integration — passing
+## Workloads on the EKS cluster
 
-![Backend CI success](screenshots/04-backend-ci-success.png)
+```
+$ kubectl get deploy,svc,pods
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/backend    1/1     1            1           12m
+deployment.apps/frontend   1/1     1            1           9m19s
 
-### 5. Frontend Continuous Deployment — passing
+NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE
+service/backend      LoadBalancer   172.20.60.26     ae61392a1591b4516b52fa741aa2a38a-1915296944.us-east-1.elb.amazonaws.com   80:31472/TCP   12m
+service/frontend     LoadBalancer   172.20.229.254   ae3b99e75d36c4ae0b16853ee0232b17-1737984447.us-east-1.elb.amazonaws.com   80:31618/TCP   9m19s
+service/kubernetes   ClusterIP      172.20.0.1       <none>                                                                    443/TCP        55m
 
-![Frontend CD success](screenshots/05-frontend-cd-success.png)
-
-### 6. Backend Continuous Deployment — passing
-
-![Backend CD success](screenshots/06-backend-cd-success.png)
-
-### 7. Frontend CI failing on a broken test
-
-![Frontend CI failure](screenshots/07-frontend-ci-failure.png)
-
-### 8. Backend CI failing on a broken test
-
-![Backend CI failure](screenshots/08-backend-ci-failure.png)
-
-### 9. Images pushed to Amazon ECR
-
-![ECR images](screenshots/09-ecr-images.png)
-
-### 10. Workloads running on the EKS cluster
-
-![kubectl get all](screenshots/10-kubectl-get-all.png)
+NAME                            READY   STATUS    RESTARTS   AGE
+pod/backend-5dd9d98574-bhv7t    1/1     Running   0          12m
+pod/frontend-555d9b9d98-b2t27   1/1     Running   0          9m19s
+```
