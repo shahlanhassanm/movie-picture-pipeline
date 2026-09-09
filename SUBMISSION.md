@@ -70,11 +70,23 @@ Selecting a movie fetches its details from the backend API, confirming the
 
 ### Frontend Continuous Deployment
 
-![Frontend CD success](screenshots/08-frontend-cd-success.png)
+Triggered automatically by a push to `main` (`on: push`, commit `c58146a`):
+
+![Frontend CD triggered by push](screenshots/12-frontend-cd-push-triggered.png)
+
+And run on demand via `workflow_dispatch`:
+
+![Frontend CD run manually](screenshots/08-frontend-cd-success.png)
 
 ### Backend Continuous Deployment
 
-![Backend CD success](screenshots/09-backend-cd-success.png)
+Triggered automatically by a push to `main` (`on: push`, commit `c58146a`):
+
+![Backend CD triggered by push](screenshots/13-backend-cd-push-triggered.png)
+
+And run on demand via `workflow_dispatch`:
+
+![Backend CD run manually](screenshots/09-backend-cd-success.png)
 
 ## Pipelines fail when tests fail
 
