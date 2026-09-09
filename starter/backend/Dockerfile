@@ -12,12 +12,12 @@ RUN apk update && \
   linux-headers \
   openssl \
   libffi-dev \
-  && pip install pipenv
+  && pip install pipenv==2023.7.23
 
 RUN mkdir -p /var/www/app && mkdir /app
 
-COPY Pipfile* /app
-RUN cd /app && pipenv install --system --deploy
+COPY Pipfile /app
+RUN cd /app && pipenv install --system --skip-lock
 
 COPY . /app
 
