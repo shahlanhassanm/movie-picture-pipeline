@@ -70,6 +70,7 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
           CI: true
+          FAIL_TEST: true
         run: npm test
 
   build:

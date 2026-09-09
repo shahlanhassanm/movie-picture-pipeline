@@ -71,8 +71,10 @@ jobs:
         working-directory: ${{ env.BACKEND_DIR }}
         run: pipenv install --dev
 
-      - name: Run tests
+            - name: Run tests
         working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          FAIL_TEST: true
         run: pipenv run test
 
   build:
