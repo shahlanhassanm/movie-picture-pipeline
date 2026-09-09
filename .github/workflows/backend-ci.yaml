@@ -1,0 +1,115 @@
+name: Backend Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'starter/backend/**'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.10'
+  BACKEND_DIR: starter/backend
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('starter/backend/Pipfile.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv install --dev
+
+      - name: Run lint
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv run lint
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('starter/backend/Pipfile.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv install --dev
+
+      - name: Run tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv run test
+
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore pip cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('starter/backend/Pipfile.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
+      - name: Install pipenv
+        run: pip install pipenv
+
+      - name: Install dependencies
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv install --dev
+
+      - name: Run tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: pipenv run test
+
+      - name: Build docker image
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: docker build --tag mp-backend:${{ github.sha }} .
+
+      - name: Verify image exists
+        run: docker image inspect mp-backend:${{ github.sha }}
