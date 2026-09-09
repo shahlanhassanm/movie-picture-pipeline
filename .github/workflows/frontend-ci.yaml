@@ -70,7 +70,7 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
           CI: true
-        run: npm test
+        run: npm run test
 
   build:
     name: Build
@@ -101,7 +101,7 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
           CI: true
-        run: npm test
+        run: npm run test
 
       - name: Build docker image
         working-directory: ${{ env.FRONTEND_DIR }}

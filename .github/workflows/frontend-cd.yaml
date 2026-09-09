@@ -72,7 +72,7 @@ jobs:
         working-directory: ${{ env.FRONTEND_DIR }}
         env:
           CI: true
-        run: npm test
+        run: npm run test
 
   build-and-deploy:
     name: Build and Deploy
